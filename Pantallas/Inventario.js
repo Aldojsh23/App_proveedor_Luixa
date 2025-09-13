@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import {
     SafeAreaView, ScrollView, View, Text, TextInput,
-    FlatList, Button, TouchableOpacity, StyleSheet,
-    KeyboardAvoidingView, Platform, Alert, Dimensions
+    FlatList, TouchableOpacity, StyleSheet,
+    KeyboardAvoidingView, Platform, Alert, Dimensions,
+    RefreshControl  // <-- Importar RefreshControl
 } from "react-native";
 import { supabase } from "../lib/supabase";
 import { getSession } from "../lib/session";
@@ -12,6 +13,7 @@ const { width } = Dimensions.get('window');
 const Inventario = ({ route }) => {
     const [proveedorId, setProveedorId] = useState(null);
     const [productos, setProductos] = useState([]);
+    const [refreshing, setRefreshing] = useState(false); // <-- Estado para refresh
     const [form, setForm] = useState({
         id_producto: null,
         nombre_producto: '',
@@ -21,25 +23,22 @@ const Inventario = ({ route }) => {
         categoria_producto: ''
     });
 
-    // Cargar sesión al montar el componente
+    // Cargar sesión
     useEffect(() => {
         const loadSession = async () => {
             const session = await getSession();
-            console.log("Sesión recuperada:", session);
-
             if (session?.id) {
                 setProveedorId(session.id);
             } else if (route.params?.id_proveedor) {
                 setProveedorId(route.params.id_proveedor);
             } else {
-                console.error("No se encontró ID de proveedor");
                 Alert.alert("Error", "No se pudo identificar al proveedor");
             }
         };
         loadSession();
     }, []);
 
-    // Obtener productos cuando proveedorId cambie
+    // Obtener productos
     useEffect(() => {
         if (proveedorId) {
             obtenerProductos();
@@ -57,10 +56,20 @@ const Inventario = ({ route }) => {
             console.error("Error al obtener productos:", error.message);
             Alert.alert("Error", "No se pudieron cargar los productos");
         } else {
-            setProductos(data);
+            setProductos(data || []);
         }
     };
 
+    // Función para refrescar
+    const onRefresh = async () => {
+        setRefreshing(true);
+        await obtenerProductos();
+        setRefreshing(false);
+    };
+
+    // Resto de funciones: limpiarFormulario, validarFormulario, agregarOActualizarProducto, etc.
+    // (quedan igual)
+    
     const limpiarFormulario = () => {
         setForm({
             id_producto: null,
@@ -85,17 +94,14 @@ const Inventario = ({ route }) => {
             Alert.alert("Error", "El precio debe ser un número válido");
             return false;
         }
-
         if (!form.talla_producto.trim()) {
             Alert.alert("Error", "La talla del producto es obligatoria");
             return false;
         }
-
         if (!form.categoria_producto.trim()) {
-            Alert.alert("Error", "La categoria del producto es obligatoria");
+            Alert.alert("Error", "La categoría del producto es obligatoria");
             return false;
         }
-
         return true;
     };
 
@@ -117,19 +123,17 @@ const Inventario = ({ route }) => {
                     .from("producto")
                     .update(nuevoProducto)
                     .eq("id_producto", form.id_producto);
-
                 if (error) throw error;
                 Alert.alert("Éxito", "Producto actualizado correctamente");
             } else {
                 const { error } = await supabase
                     .from("producto")
                     .insert(nuevoProducto);
-
                 if (error) throw error;
                 Alert.alert("Éxito", "Producto agregado correctamente");
             }
 
-            await obtenerProductos();
+            await obtenerProductos(); // Refrescar lista
             limpiarFormulario();
         } catch (error) {
             console.error("Error al guardar producto:", error.message);
@@ -152,10 +156,9 @@ const Inventario = ({ route }) => {
                                 .from("producto")
                                 .delete()
                                 .eq("id_producto", id_producto);
-
                             if (error) throw error;
                             Alert.alert("Éxito", "Producto eliminado correctamente");
-                            await obtenerProductos();
+                            await obtenerProductos(); // Refrescar
                         } catch (error) {
                             console.error("Error al eliminar producto:", error.message);
                             Alert.alert("Error", "No se pudo eliminar el producto");
@@ -235,6 +238,12 @@ const Inventario = ({ route }) => {
                     style={styles.scrollView}
                     showsVerticalScrollIndicator={false}
                     keyboardShouldPersistTaps="handled"
+                    refreshControl={
+                        <RefreshControl 
+                            refreshing={refreshing} 
+                            onRefresh={onRefresh} 
+                        />
+                    }
                 >
                     <Text style={styles.title}>Inventario</Text>
 
@@ -245,7 +254,7 @@ const Inventario = ({ route }) => {
                             keyExtractor={(item) => item.id_producto.toString()}
                             style={styles.productsList}
                             showsVerticalScrollIndicator={false}
-                            scrollEnabled={false} // Deshabilitamos el scroll interno para que funcione el scroll principal
+                            scrollEnabled={false}
                         />
                     ) : (
                         <View style={styles.emptyState}>
@@ -284,7 +293,6 @@ const Inventario = ({ route }) => {
                             placeholderTextColor="#999"
                         />
                         
-                         
                         <TextInput 
                             style={styles.textInput} 
                             placeholder="Talla*" 

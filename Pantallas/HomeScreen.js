@@ -16,6 +16,10 @@ export default function HomeScreen({ route, onLogout }) {
   const [productosCount, setProductosCount] = useState(0);
   const [productosError, setProductosError] = useState(null);
 
+  //Estado de pedidos
+  const [pedidosHoyCount, setPedidosHoyCount] = useState(0);
+  const [pedidosError, setPedidosError] = useState(null);
+
   // Cargar sesión al montar el componente
   useEffect(() => {
     const loadSession = async () => {
@@ -108,6 +112,39 @@ export default function HomeScreen({ route, onLogout }) {
     }, [proveedorId])
   );
 
+  //Obtener pedidos de hoy al enfocar la pantalla
+  // Obtener pedidos de hoy al enfocar la pantalla
+  useFocusEffect(
+    useCallback(() => {
+      const obtenerPedidosHoy = async () => {
+        try {
+          // Generar la fecha de inicio del día (00:00:00)
+          const hoy = new Date();
+          const inicioDia = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+
+          // Generar en formato ISO para comparar en Supabase
+          const inicioDiaISO = inicioDia.toISOString();
+
+          const { count, error } = await supabase
+            .from("pedidos")
+            .select("*", { count: "exact", head: true })
+            .eq("id_proveedor", proveedorId)
+            .gte("fecha_creacion", inicioDiaISO); // >= inicio del día
+
+          if (error) throw error;
+          setPedidosHoyCount(count);
+        } catch (err) {
+          console.error("Error al contar pedidos de hoy:", err.message);
+          setPedidosError(err);
+        }
+      };
+
+      if (proveedorId) {
+        obtenerPedidosHoy();
+      }
+    }, [proveedorId])
+  );
+
   const handleLogout = () => {
     Alert.alert("Cerrar Sesión", "¿Estás seguro que deseas cerrar sesión?", [
       { text: "Cancelar", style: "cancel" },
@@ -163,7 +200,7 @@ export default function HomeScreen({ route, onLogout }) {
 
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
-            <Text style={styles.statNumber}>0</Text>
+            <Text style={styles.statNumber}>{pedidosHoyCount}</Text>
             <Text style={styles.statLabel}>Pedidos Hoy</Text>
           </View>
           <View style={styles.statCard}>
@@ -175,6 +212,7 @@ export default function HomeScreen({ route, onLogout }) {
             <Text style={styles.statLabel}>Productos</Text>
           </View>
         </View>
+
       </View>
 
       <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>

@@ -1,11 +1,20 @@
-import React from "react";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useFocusEffect } from "@react-navigation/native";
 
 import {
-    SafeAreaView, ScrollView, View, Text, TextInput,
-    FlatList, Button, TouchableOpacity, StyleSheet,
-    KeyboardAvoidingView, Platform, Alert, Dimensions
+    SafeAreaView,
+    ScrollView,
+    View,
+    Text,
+    TextInput,
+    FlatList,
+    TouchableOpacity,
+    StyleSheet,
+    KeyboardAvoidingView,
+    Platform,
+    Alert,
+    Dimensions,
+    RefreshControl, // <-- Importar RefreshControl
 } from "react-native";
 
 import { supabase } from "../lib/supabase";
@@ -13,15 +22,14 @@ import { getSession } from "../lib/session";
 
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 
-
 const { width } = Dimensions.get('window');
 
 const Clientes = ({ route, navigation }) => {
-
     const [expandedId, setExpandedId] = useState(null);
-
     const [proveedorId, setProveedorId] = useState(null);
     const [clientes, setClientes] = useState([]);
+    const [refreshing, setRefreshing] = useState(false); // Estado para refresh
+
     const [form, setForm] = useState({
         id_cliente: null,
         nombre_cliente: '',
@@ -32,34 +40,22 @@ const Clientes = ({ route, navigation }) => {
         estado: '',
     });
 
-    // Cargar sesión al montar el componente
+    // Cargar sesión
     useEffect(() => {
         const loadSession = async () => {
             const session = await getSession();
-            console.log("Sesión recuperada:", session);
-
             if (session?.id) {
                 setProveedorId(session.id);
             } else if (route.params?.id_proveedor) {
                 setProveedorId(route.params.id_proveedor);
             } else {
-                console.error("No se encontró ID de proveedor");
                 Alert.alert("Error", "No se pudo identificar al proveedor");
             }
         };
         loadSession();
     }, []);
 
-    // Obtener clientes cuando proveedorId cambie
-
-    useFocusEffect(
-        React.useCallback(() => {
-            if (proveedorId) {
-                obtener_clientes();
-            }
-        }, [proveedorId])
-    );
-
+    // Función para obtener clientes
     const obtener_clientes = async () => {
         console.log("Obteniendo los clientes para el proveedor:", proveedorId);
         const { data, error } = await supabase
@@ -71,9 +67,27 @@ const Clientes = ({ route, navigation }) => {
             console.error("Error al obtener los clientes:", error.message);
             Alert.alert("Error", "No se pudieron cargar los clientes");
         } else {
-            setClientes(data);
+            setClientes(data || []);
         }
-    }
+    };
+
+    // Refrescar al enfocar la pantalla
+    useFocusEffect(
+        React.useCallback(() => {
+            if (proveedorId) {
+                obtener_clientes();
+            }
+        }, [proveedorId])
+    );
+
+    // Función para pull-to-refresh
+    const onRefresh = async () => {
+        setRefreshing(true);
+        await obtener_clientes();
+        setRefreshing(false);
+    };
+
+    // Resto de funciones (limpiar, validar, agregar, eliminar, editar) permanecen igual
 
     const limpiarFormulario = () => {
         setForm({
@@ -90,35 +104,29 @@ const Clientes = ({ route, navigation }) => {
     const validarFormulario = () => {
         if (!form.nombre_cliente.trim()) {
             Alert.alert("Error", "El nombre del cliente es obligatorio");
-            return (false);
+            return false;
         }
-
         if (!form.apellidos_cliente.trim()) {
             Alert.alert("Error", "Los apellidos del cliente son obligatorios");
-            return (false);
+            return false;
         }
-
         if (!form.alias_cliente.trim()) {
             Alert.alert("Error", "El alias del cliente es obligatorio");
-            return (false);
+            return false;
         }
-
         if (!form.telefono_cliente || isNaN(form.telefono_cliente) || parseInt(form.telefono_cliente) < 0) {
             Alert.alert("Error", "El teléfono del cliente es obligatorio");
-            return (false);
+            return false;
         }
-
         if (!form.municipio.trim()) {
             Alert.alert("Error", "El municipio del cliente es obligatorio");
-            return (false);
+            return false;
         }
-
         if (!form.estado.trim()) {
             Alert.alert("Error", "El estado del cliente es obligatorio");
-            return (false);
+            return false;
         }
-
-        return (true);
+        return true;
     };
 
     const agregar_o_actualizar_cliente = async () => {
@@ -140,7 +148,6 @@ const Clientes = ({ route, navigation }) => {
                     .from("clientes")
                     .update(nuevo_cliente)
                     .eq("id_cliente", form.id_cliente);
-
                 if (error) throw error;
                 Alert.alert("Éxito", "Cliente actualizado correctamente");
             } else {
@@ -154,8 +161,8 @@ const Clientes = ({ route, navigation }) => {
             await obtener_clientes();
             limpiarFormulario();
         } catch (error) {
-            console.error("Error al guardar producto:", error.message);
-            Alert.alert("Error", "No se pudo guardar el producto");
+            console.error("Error al guardar cliente:", error.message);
+            Alert.alert("Error", "No se pudo guardar el cliente");
         }
     };
 
@@ -175,22 +182,20 @@ const Clientes = ({ route, navigation }) => {
                                 .delete()
                                 .eq("id_cliente", id_cliente);
                             if (error) throw error;
-                            Alert.alert("Exito", "Cliente eliminado correctamente");
+                            Alert.alert("Éxito", "Cliente eliminado correctamente");
                             await obtener_clientes();
                         } catch (error) {
-                            console.log("Error al eliminar cliente:", error.message);
+                            console.error("Error al eliminar cliente:", error.message);
                             Alert.alert("Error", "No se pudo eliminar el cliente");
-
                         }
                     }
                 }
             ]
-        )
+        );
     };
 
     const editarCliente = (cliente) => {
         navigation.navigate("Clientes_agregar", { cliente });
-
     };
 
     const Cliente_card = ({ item }) => {
@@ -249,27 +254,25 @@ const Clientes = ({ route, navigation }) => {
         );
     };
 
-
-
-    console.log("\n\n");
-
     return (
-
         <KeyboardAvoidingView
             style={styles.container}
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
-
             <SafeAreaView style={styles.container}>
                 <ScrollView
                     style={styles.scrollView}
                     showsVerticalScrollIndicator={false}
                     keyboardShouldPersistTaps="handled"
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={onRefresh}
+                        />
+                    }
                 >
-                    {/* Botón en la esquina superior derecha */}
                     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 15 }}>
                         <Text style={styles.title}>Clientes</Text>
-
                         <TouchableOpacity
                             style={styles.topRightButton}
                             onPress={() => navigation.navigate("Clientes_agregar")}
@@ -285,21 +288,18 @@ const Clientes = ({ route, navigation }) => {
                             keyExtractor={(item) => item.id_cliente.toString()}
                             style={styles.clienteList}
                             showsVerticalScrollIndicator={false}
-                            scrollEnabled={false} // Deshabilitamos el scroll interno para que funcione el scroll principal
-
+                            scrollEnabled={false}
                         />
                     ) : (
                         <View style={styles.emptyState}>
                             <Text style={styles.emptyStateText}>No hay clientes registrados</Text>
                         </View>
                     )}
-
-
                 </ScrollView>
             </SafeAreaView>
         </KeyboardAvoidingView>
     );
-}
+};
 
 const styles = StyleSheet.create({
     container: {
