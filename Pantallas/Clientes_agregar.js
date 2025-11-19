@@ -120,8 +120,8 @@ const Clientes_agregar = ({ route }) => {
 
             limpiarFormulario();
         } catch (error) {
-            console.error("Error al guardar producto:", error.message);
-            Alert.alert("Error", "No se pudo guardar el producto");
+            console.error("Error al guardar cliente:", error.message);
+            Alert.alert("Error", "No se pudo guardar el cliente");
         }
     };
 

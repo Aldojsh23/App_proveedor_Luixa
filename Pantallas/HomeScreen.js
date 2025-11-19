@@ -112,35 +112,29 @@ export default function HomeScreen({ route, onLogout }) {
     }, [proveedorId])
   );
 
+
   //Obtener pedidos de hoy al enfocar la pantalla
   // Obtener pedidos de hoy al enfocar la pantalla
   useFocusEffect(
     useCallback(() => {
-      const obtenerPedidosHoy = async () => {
+      const obtenerPedidosPendientes = async () => {
         try {
-          // Generar la fecha de inicio del día (00:00:00)
-          const hoy = new Date();
-          const inicioDia = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
-
-          // Generar en formato ISO para comparar en Supabase
-          const inicioDiaISO = inicioDia.toISOString();
-
           const { count, error } = await supabase
             .from("pedidos")
             .select("*", { count: "exact", head: true })
             .eq("id_proveedor", proveedorId)
-            .gte("fecha_creacion", inicioDiaISO); // >= inicio del día
+            .eq("estado", "pendiente"); // Cambia "pendiente" si tu estado es diferente
 
           if (error) throw error;
           setPedidosHoyCount(count);
         } catch (err) {
-          console.error("Error al contar pedidos de hoy:", err.message);
+          console.error("Error al contar pedidos pendientes:", err.message);
           setPedidosError(err);
         }
       };
 
       if (proveedorId) {
-        obtenerPedidosHoy();
+        obtenerPedidosPendientes();
       }
     }, [proveedorId])
   );
@@ -201,7 +195,7 @@ export default function HomeScreen({ route, onLogout }) {
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
             <Text style={styles.statNumber}>{pedidosHoyCount}</Text>
-            <Text style={styles.statLabel}>Pedidos Hoy</Text>
+            <Text style={styles.statLabel}>Pedidos Pendientes</Text>
           </View>
           <View style={styles.statCard}>
             <Text style={styles.statNumber}>{clientesCount}</Text>

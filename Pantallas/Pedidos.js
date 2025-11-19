@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import {
     View, Text, FlatList, SafeAreaView, ScrollView,
-    StyleSheet, Alert, RefreshControl, TouchableOpacity
+    StyleSheet, Alert, RefreshControl, TouchableOpacity, StatusBar
 } from "react-native";
 import { supabase } from "../lib/supabase";
 import { getSession } from "../lib/session";
@@ -104,14 +104,14 @@ const Pedidos = ({ route }) => {
 
                 const detallesPedido = detallesData
                     ? detallesData
-                          .filter((d) => d.id_pedido === pedido.id_pedido)
-                          .map((detalle) => ({
-                              ...detalle,
-                              producto: productosMap[detalle.id_producto] || {
-                                  nombre_producto: "Producto no encontrado",
-                                  categoria_producto: "N/A",
-                              },
-                          }))
+                        .filter((d) => d.id_pedido === pedido.id_pedido)
+                        .map((detalle) => ({
+                            ...detalle,
+                            producto: productosMap[detalle.id_producto] || {
+                                nombre_producto: "Producto no encontrado",
+                                categoria_producto: "N/A",
+                            },
+                        }))
                     : [];
 
                 const totalProductos = detallesPedido.reduce((sum, d) => sum + d.cantidad, 0);
@@ -144,7 +144,7 @@ const Pedidos = ({ route }) => {
     const restaurarStock = async (detallesPedido) => {
         try {
             console.log('Restaurando stock para pedido cancelado...');
-            
+
             for (const detalle of detallesPedido) {
                 // Obtener stock actual del producto
                 const { data: productoActual, error: errorConsulta } = await supabase
@@ -197,9 +197,9 @@ const Pedidos = ({ route }) => {
 
             const { error } = await supabase
                 .from("pedidos")
-                .update({ 
-                    estado: nuevoEstado, 
-                    fecha_actualizacion: new Date().toISOString() 
+                .update({
+                    estado: nuevoEstado,
+                    fecha_actualizacion: new Date().toISOString()
                 })
                 .eq("id_pedido", idPedido);
 
@@ -207,12 +207,12 @@ const Pedidos = ({ route }) => {
 
             const mensajeAccion = nuevoEstado === 'completado' ? 'confirmado' : 'cancelado';
             const mensajeStock = nuevoEstado === 'cancelado' ? ' y el stock ha sido restaurado' : '';
-            
+
             Alert.alert(
-                "Éxito", 
+                "Éxito",
                 `Pedido #${numeroPedido} (${codigoSeguimiento}) ${mensajeAccion} correctamente${mensajeStock}`
             );
-            
+
             await cargarPedidosProveedor(sessionData.id);
         } catch (error) {
             console.error("Error al actualizar pedido:", error);
@@ -241,7 +241,7 @@ const Pedidos = ({ route }) => {
     const formatearMoneda = (amount) => `$${parseFloat(amount || 0).toFixed(2)}`;
 
     const obtenerEstiloEstado = (estado) => {
-        switch(estado?.toLowerCase()) {
+        switch (estado?.toLowerCase()) {
             case 'completado':
                 return {
                     backgroundColor: '#d4edda',
@@ -314,7 +314,7 @@ const Pedidos = ({ route }) => {
                             🔄 Actualizado: {formatearFecha(pedido.fecha_actualizacion)}
                         </Text>
                     )}
-                    
+
                     <Text style={styles.infoTexto}>
                         💰 Total: {formatearMoneda(pedido.total)}
                     </Text>
@@ -351,13 +351,13 @@ const Pedidos = ({ route }) => {
                     <View style={styles.botonesContainer}>
                         <TouchableOpacity
                             style={[
-                                styles.boton, 
+                                styles.boton,
                                 { backgroundColor: "#27ae60" },
                                 esProcesando && styles.botonDeshabilitado
                             ]}
                             onPress={() => actualizarEstadoPedido(
-                                pedido.id_pedido, 
-                                "completado", 
+                                pedido.id_pedido,
+                                "completado",
                                 pedido.detalles,
                                 pedido.numero_pedido_proveedor,
                                 pedido.codigo_seguimiento
@@ -370,13 +370,13 @@ const Pedidos = ({ route }) => {
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={[
-                                styles.boton, 
+                                styles.boton,
                                 { backgroundColor: "#e74c3c" },
                                 esProcesando && styles.botonDeshabilitado
                             ]}
                             onPress={() => actualizarEstadoPedido(
-                                pedido.id_pedido, 
-                                "cancelado", 
+                                pedido.id_pedido,
+                                "cancelado",
                                 pedido.detalles,
                                 pedido.numero_pedido_proveedor,
                                 pedido.codigo_seguimiento
@@ -394,8 +394,8 @@ const Pedidos = ({ route }) => {
                 {!deberiasMostrarBotones && (
                     <View style={styles.infoFinalizada}>
                         <Text style={styles.infoFinalizadaTexto}>
-                            {pedido.estado?.toLowerCase() === 'completado' 
-                                ? "Este pedido ha sido confirmado y procesado." 
+                            {pedido.estado?.toLowerCase() === 'completado'
+                                ? "Este pedido ha sido confirmado y procesado."
                                 : "Este pedido ha sido cancelado y el stock fue restaurado."
                             }
                         </Text>
@@ -415,6 +415,11 @@ const Pedidos = ({ route }) => {
 
     return (
         <SafeAreaView style={styles.container}>
+            <StatusBar
+                barStyle="dark-content" // o "light-content" según el fondo
+                backgroundColor="#f8f9fa" // mismo color que tu fondo
+            />
+
             <Text style={styles.title}>Pedidos Recibidos</Text>
             {pedidos.length === 0 ? (
                 <View style={styles.emptyContainer}>
@@ -435,7 +440,7 @@ const Pedidos = ({ route }) => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, padding: 10, backgroundColor: "#f8f9fa" },
+    container: { flex: 1, paddingTop: 30, backgroundColor: "#f8f9fa" },
     title: { fontSize: 24, textAlign: "center", marginBottom: 15, fontWeight: "bold", color: "#2c3e50" },
     emptyContainer: { flex: 1, justifyContent: "center", alignItems: "center", padding: 20 },
     emptyText: { fontSize: 16, color: "#7f8c8d", textAlign: "center" },
@@ -462,9 +467,9 @@ const styles = StyleSheet.create({
     tituloPedido: {
         flex: 1,
     },
-    detallesTitle: { 
-        fontSize: 16, 
-        fontWeight: "bold", 
+    detallesTitle: {
+        fontSize: 16,
+        fontWeight: "bold",
         color: "#2c3e50"
     },
     codigoSeguimiento: {
@@ -522,22 +527,22 @@ const styles = StyleSheet.create({
         color: "#555",
         fontStyle: "italic",
     },
-    botonesContainer: { 
-        flexDirection: "row", 
-        justifyContent: "space-around", 
+    botonesContainer: {
+        flexDirection: "row",
+        justifyContent: "space-around",
         marginTop: 15,
         paddingTop: 10,
         borderTopWidth: 1,
         borderTopColor: "#eee"
     },
-    boton: { 
-        padding: 12, 
-        borderRadius: 6, 
-        width: "40%", 
-        alignItems: "center" 
+    boton: {
+        padding: 12,
+        borderRadius: 6,
+        width: "40%",
+        alignItems: "center"
     },
-    botonTexto: { 
-        color: "#fff", 
+    botonTexto: {
+        color: "#fff",
         fontWeight: "bold",
         fontSize: 13
     },

@@ -13,27 +13,14 @@ import Home_screen from "./Pantallas/HomeScreen";
 import Pedidos from "./Pantallas/Pedidos";
 import Clientes from "./Pantallas/Clientes";
 import Inventario from "./Pantallas/Inventario";
-import Clientes_view from "./Pantallas/Clientes_view";
 import Clientes_agregar from "./Pantallas/Clientes_agregar";
+import Product_add from "./Pantallas/Product_add";
 
 const HomeStackNavigator = createNativeStackNavigator();
 
-/*function Mystack({ userData }) {
-    return (
-        <HomeStackNavigator.Navigator>
-            <HomeStackNavigator.Screen
-                name="Clientes_view"
-                component={Clientes_view}
-            />
-            <HomeStackNavigator.Screen
-                name="Clientes_agregar"
-                component={Clientes_agregar}
-            />
-        </HomeStackNavigator.Navigator>
-    );
-}*/
 
 const ClientesStack = createNativeStackNavigator();
+const InventarioStack = createNativeStackNavigator();
 
 function ClientesNavigator({ userData }) {
     return (
@@ -43,15 +30,7 @@ function ClientesNavigator({ userData }) {
                 component={Clientes}
                 options={{ headerShown: false }}
             />
-            <ClientesStack.Screen
-                name="Clientes_view"
-                component={Clientes_view}
-                styles={styles.headerTitle}
-                options={{
-                    headerTitle: "Clientes registrados",
-                    headerBackTitleVisible: false
-                }}
-            />
+
             <ClientesStack.Screen
                 name="Clientes_agregar"
                 component={Clientes_agregar}
@@ -64,6 +43,31 @@ function ClientesNavigator({ userData }) {
         </ClientesStack.Navigator>
     );
 }
+
+function InventarioNavigator({ userData }) {
+    return (
+        <InventarioStack.Navigator>
+            <InventarioStack.Screen
+                name="InventarioMain"
+                component={Inventario}
+                options={{ headerShown: false }}
+            />
+
+            <InventarioStack.Screen
+                name="Product_add"
+                component={Product_add}
+                styles={styles.headerTitle}
+                options={{
+                    headerTitle: "Agregar productos",
+                    headerBackTitleVisible: false
+                }}
+            />
+
+        </InventarioStack.Navigator>
+    );
+}
+
+
 
 const Tab = createBottomTabNavigator();
 
@@ -99,6 +103,7 @@ function Mytabs({ userData, onLogout }) {
             >
                 {(props) => <Pedidos {...props} userData={userData} onLogout={onLogout} />}
             </Tab.Screen>
+
             <Tab.Screen
                 name="Clientes"
                 options={{
@@ -111,6 +116,7 @@ function Mytabs({ userData, onLogout }) {
             >
                 {(props) => <ClientesNavigator {...props} userData={userData} onLogout={onLogout} />}
             </Tab.Screen>
+
             <Tab.Screen
                 name="Inventario"
                 options={{
@@ -121,7 +127,7 @@ function Mytabs({ userData, onLogout }) {
                     headerShown: false,
                 }}
             >
-                {(props) => <Inventario {...props} userData={userData} onLogout={onLogout} />}
+                {(props) => <InventarioNavigator {...props} userData={userData} onLogout={onLogout} />}
             </Tab.Screen>
         </Tab.Navigator>
     );
