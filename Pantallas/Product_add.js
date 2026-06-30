@@ -339,9 +339,7 @@ const Product_add = ({ route }) => {
                     keyboardShouldPersistTaps="handled"
                 >
                     <View style={styles.formContainer}>
-                        <Text style={styles.formTitle}>
-                            {form.id_producto ? "Editar Producto" : "Agregar Producto"}
-                        </Text>
+                        
 
                         {/* Sección de imagen */}
                         <View style={styles.imageSection}>

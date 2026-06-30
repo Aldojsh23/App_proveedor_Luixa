@@ -1,505 +1,306 @@
 import React, { useEffect, useState } from "react";
 import { useFocusEffect } from "@react-navigation/native";
-
 import {
     SafeAreaView,
     ScrollView,
     View,
     Text,
-    TextInput,
     FlatList,
     TouchableOpacity,
     StyleSheet,
     KeyboardAvoidingView,
     Platform,
     Alert,
-    Dimensions,
-    RefreshControl, // <-- Importar RefreshControl
+    RefreshControl,
+    LayoutAnimation,
+    UIManager,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
 
 import { supabase } from "../lib/supabase";
 import { getSession } from "../lib/session";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-
-const { width } = Dimensions.get('window');
+if (Platform.OS === "android") {
+    UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 const Clientes = ({ route, navigation }) => {
     const [expandedId, setExpandedId] = useState(null);
     const [proveedorId, setProveedorId] = useState(null);
     const [clientes, setClientes] = useState([]);
-    const [refreshing, setRefreshing] = useState(false); // Estado para refresh
+    const [refreshing, setRefreshing] = useState(false);
+    const insets = useSafeAreaInsets();
 
-    const [form, setForm] = useState({
-        id_cliente: null,
-        nombre_cliente: '',
-        apellidos_cliente: '',
-        alias_cliente: '',
-        telefono_cliente: '',
-        municipio: '',
-        estado: '',
-    });
 
-    // Cargar sesión
     useEffect(() => {
         const loadSession = async () => {
             const session = await getSession();
-            if (session?.id) {
-                setProveedorId(session.id);
-            } else if (route.params?.id_proveedor) {
-                setProveedorId(route.params.id_proveedor);
-            } else {
-                Alert.alert("Error", "No se pudo identificar al proveedor");
-            }
+            if (session?.id) setProveedorId(session.id);
+            else if (route.params?.id_proveedor) setProveedorId(route.params.id_proveedor);
+            else Alert.alert("Error", "No se pudo identificar al proveedor");
         };
         loadSession();
     }, []);
 
-    // Función para obtener clientes
     const obtener_clientes = async () => {
-        console.log("Obteniendo los clientes para el proveedor:", proveedorId);
         const { data, error } = await supabase
             .from("clientes")
             .select("*")
             .eq("id_proveedor", proveedorId);
 
-        if (error) {
-            console.error("Error al obtener los clientes:", error.message);
-            Alert.alert("Error", "No se pudieron cargar los clientes");
-        } else {
-            setClientes(data || []);
-        }
+        if (!error) setClientes(data || []);
     };
 
-    // Refrescar al enfocar la pantalla
     useFocusEffect(
         React.useCallback(() => {
-            if (proveedorId) {
-                obtener_clientes();
-            }
+            if (proveedorId) obtener_clientes();
         }, [proveedorId])
     );
 
-    // Función para pull-to-refresh
     const onRefresh = async () => {
         setRefreshing(true);
         await obtener_clientes();
         setRefreshing(false);
     };
 
-    // Resto de funciones (limpiar, validar, agregar, eliminar, editar) permanecen igual
-
-    const limpiarFormulario = () => {
-        setForm({
-            id_cliente: null,
-            nombre_cliente: '',
-            apellidos_cliente: '',
-            alias_cliente: '',
-            telefono_cliente: '',
-            municipio: '',
-            estado: '',
-        });
-    };
-
-    const validarFormulario = () => {
-        if (!form.nombre_cliente.trim()) {
-            Alert.alert("Error", "El nombre del cliente es obligatorio");
-            return false;
-        }
-        if (!form.apellidos_cliente.trim()) {
-            Alert.alert("Error", "Los apellidos del cliente son obligatorios");
-            return false;
-        }
-        if (!form.alias_cliente.trim()) {
-            Alert.alert("Error", "El alias del cliente es obligatorio");
-            return false;
-        }
-        if (!form.telefono_cliente || isNaN(form.telefono_cliente) || parseInt(form.telefono_cliente) < 0) {
-            Alert.alert("Error", "El teléfono del cliente es obligatorio");
-            return false;
-        }
-        if (!form.municipio.trim()) {
-            Alert.alert("Error", "El municipio del cliente es obligatorio");
-            return false;
-        }
-        if (!form.estado.trim()) {
-            Alert.alert("Error", "El estado del cliente es obligatorio");
-            return false;
-        }
-        return true;
-    };
-
-    const agregar_o_actualizar_cliente = async () => {
-        if (!validarFormulario()) return;
-
-        const nuevo_cliente = {
-            nombre_cliente: form.nombre_cliente.trim(),
-            apellidos_cliente: form.apellidos_cliente.trim(),
-            alias_cliente: form.alias_cliente.trim(),
-            telefono_cliente: parseInt(form.telefono_cliente),
-            municipio: form.municipio.trim(),
-            estado: form.estado.trim(),
-            id_proveedor: proveedorId,
-        };
-
-        try {
-            if (form.id_cliente) {
-                const { error } = await supabase
-                    .from("clientes")
-                    .update(nuevo_cliente)
-                    .eq("id_cliente", form.id_cliente);
-                if (error) throw error;
-                Alert.alert("Éxito", "Cliente actualizado correctamente");
-            } else {
-                const { error } = await supabase
-                    .from("clientes")
-                    .insert(nuevo_cliente);
-                if (error) throw error;
-                Alert.alert("Éxito", "Cliente agregado correctamente");
-            }
-
-            await obtener_clientes();
-            limpiarFormulario();
-        } catch (error) {
-            console.error("Error al guardar cliente:", error.message);
-            Alert.alert("Error", "No se pudo guardar el cliente");
-        }
-    };
-
     const eliminar_cliente = async (id_cliente) => {
         Alert.alert(
-            "Confirmar eliminación",
-            "¿Estás seguro de eliminar el cliente?",
+            "Eliminar cliente",
+            "¿Deseas eliminar este cliente?",
             [
                 { text: "Cancelar", style: "cancel" },
                 {
                     text: "Eliminar",
                     style: "destructive",
                     onPress: async () => {
-                        try {
-                            const { error } = await supabase
-                                .from("clientes")
-                                .delete()
-                                .eq("id_cliente", id_cliente);
-                            if (error) throw error;
-                            Alert.alert("Éxito", "Cliente eliminado correctamente");
-                            await obtener_clientes();
-                        } catch (error) {
-                            console.error("Error al eliminar cliente:", error.message);
-                            Alert.alert("Error", "No se pudo eliminar el cliente");
-                        }
+                        await supabase.from("clientes").delete().eq("id_cliente", id_cliente);
+                        obtener_clientes();
                     }
                 }
             ]
         );
     };
 
-    const editarCliente = (cliente) => {
-        navigation.navigate("Clientes_agregar", { cliente });
-    };
+    const ClienteCard = ({ item }) => {
+        const expanded = expandedId === item.id_cliente;
 
-    const Cliente_card = ({ item }) => {
-        const isExpanded = expandedId === item.id_cliente;
+        const toggle = () => {
+            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+            setExpandedId(expanded ? null : item.id_cliente);
+        };
 
         return (
-            <TouchableOpacity
-                style={styles.card}
-                activeOpacity={0.8}
-                onPress={() => setExpandedId(isExpanded ? null : item.id_cliente)}
-            >
-                <View style={styles.card_header}>
-                    <Text style={styles.cliente_name}>{item.alias_cliente}</Text>
-                    <View style={styles.actionButtons}>
-                        <TouchableOpacity
-                            style={styles.editButton}
-                            onPress={(e) => {
-                                e.stopPropagation();
-                                editarCliente(item);
-                            }}
-                        >
-                            <Text style={styles.editButtonText}>Editar</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            style={styles.deleteButton}
-                            onPress={(e) => {
-                                e.stopPropagation();
-                                eliminar_cliente(item.id_cliente);
-                            }}
-                        >
-                            <Text style={styles.deleteButtonText}>Eliminar</Text>
-                        </TouchableOpacity>
+            <TouchableOpacity style={styles.card} activeOpacity={0.9} onPress={toggle}>
+                <View style={styles.cardHeader}>
+                    <View style={styles.avatar}>
+                        <Text style={styles.avatarText}>
+                            {item.alias_cliente.charAt(0).toUpperCase()}
+                        </Text>
                     </View>
+
+                    <View style={{ flex: 1 }}>
+                        <Text style={styles.alias}>{item.alias_cliente}</Text>
+                        <Text style={styles.subText}>{item.telefono_cliente}</Text>
+                    </View>
+
+                    <TouchableOpacity onPress={() => eliminar_cliente(item.id_cliente)}>
+                        <MaterialIcons name="delete-outline" size={22} color="#e74c3c" />
+                    </TouchableOpacity>
                 </View>
-                {isExpanded && (
-                    <View style={styles.cardContent}>
-                        <View style={styles.infoRow}>
-                            <Text style={styles.label}>Nombre:</Text>
-                            <Text style={styles.value}>{item.nombre_cliente}</Text>
-                        </View>
-                        <View style={styles.infoRow}>
-                            <Text style={styles.label}>Apellidos:</Text>
-                            <Text style={styles.value}>{item.apellidos_cliente}</Text>
-                        </View>
-                        <View style={styles.infoRow}>
-                            <Text style={styles.label}>Teléfono:</Text>
-                            <Text style={styles.value}>{item.telefono_cliente}</Text>
-                        </View>
-                        <View style={styles.infoRow}>
-                            <Text style={styles.label}>Procedencia:</Text>
-                            <Text style={styles.value}>{item.municipio}, {item.estado}</Text>
-                        </View>
+
+                {expanded && (
+                    <View style={styles.cardBody}>
+                        <Info label="Nombre" value={`${item.nombre_cliente} ${item.apellidos_cliente}`} />
+                        <Info label="Procedencia" value={`${item.municipio}, ${item.estado}`} />
+
+                        <TouchableOpacity
+                            style={styles.editBtn}
+                            onPress={() => navigation.navigate("Clientes_agregar", { cliente: item })}
+                        >
+                            <MaterialIcons name="edit" size={18} color="#fff" />
+                            <Text style={styles.editText}>Editar</Text>
+                        </TouchableOpacity>
                     </View>
                 )}
             </TouchableOpacity>
         );
     };
 
-    return (
-        <KeyboardAvoidingView
-            style={styles.container}
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        >
-            <SafeAreaView style={styles.container}>
-                <ScrollView
-                    style={styles.scrollView}
-                    showsVerticalScrollIndicator={false}
-                    keyboardShouldPersistTaps="handled"
-                    refreshControl={
-                        <RefreshControl
-                            refreshing={refreshing}
-                            onRefresh={onRefresh}
-                        />
-                    }
-                >
-                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 15 }}>
-                        <Text style={styles.title}>Clientes</Text>
-                        <TouchableOpacity
-                            style={styles.topRightButton}
-                            onPress={() => navigation.navigate("Clientes_agregar")}
-                        >
-                            <MaterialIcons name="person-add-alt" size={24} color="white" />
-                        </TouchableOpacity>
-                    </View>
+    const Info = ({ label, value }) => (
+        <View style={styles.infoRow}>
+            <Text style={styles.label}>{label}</Text>
+            <Text style={styles.value}>{value}</Text>
+        </View>
+    );
 
+    return (
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+            <SafeAreaView className="flex-1 bg-white" style={[styles.container, { paddingTop: insets.top }]}>
+                {/* HEADER */}
+                <View style={styles.header}>
+                    <Text style={styles.headerTitle}>Clientes</Text>
+                </View>
+
+                <ScrollView
+                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+                >
                     {clientes.length > 0 ? (
                         <FlatList
                             data={clientes}
-                            renderItem={({ item }) => <Cliente_card item={item} />}
+                            renderItem={({ item }) => <ClienteCard item={item} />}
                             keyExtractor={(item) => item.id_cliente.toString()}
-                            style={styles.clienteList}
-                            showsVerticalScrollIndicator={false}
                             scrollEnabled={false}
                         />
                     ) : (
-                        <View style={styles.emptyState}>
-                            <Text style={styles.emptyStateText}>No hay clientes registrados</Text>
+                        <View style={styles.empty}>
+                            <MaterialIcons name="people-outline" size={80} color="#bdc3c7" />
+                            <Text style={styles.emptyText}>No hay clientes registrados</Text>
                         </View>
                     )}
                 </ScrollView>
+
+                {/* FAB */}
+                <TouchableOpacity
+                    style={styles.fab}
+                    onPress={() => navigation.navigate("Clientes_agregar")}
+                >
+                    <MaterialIcons name="person-add" size={28} color="#fff" />
+                </TouchableOpacity>
             </SafeAreaView>
         </KeyboardAvoidingView>
     );
 };
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#f8f9fa',
-        paddingTop: 20
-    },
+    container: { flex: 1, backgroundColor: "#f4f6f8" },
 
-    scrollView: {
-        flex: 1,
-        paddingHorizontal: 16
-    },
+header: {
+    backgroundColor: "#2980b9",
+    marginTop: 0, // Antes: 50
+    paddingTop: 10, // Nuevo: más espacio arriba
+    paddingBottom: 24, // Más espacio abajo
+    paddingHorizontal: 16,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
+},
 
-    title: {
-        fontSize: 28,
-        textAlign: "center",
-        marginVertical: 20,
-        fontWeight: 'bold',
-        color: '#2c3e50'
-    },
-
-    clienteList: {
-        marginBottom: 20
-    },
+headerTitle: {
+    color: "#fff",
+    fontSize: 30, // Antes: 24
+    fontWeight: "900", // Más negrita
+    textAlign: "center",
+    letterSpacing: 1,
+    textShadowColor: "rgba(44,62,80,0.15)",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+},
 
     card: {
-        backgroundColor: '#fff',
-        borderRadius: 12,
+        backgroundColor: "#fff",
+        margin: 16,
+        borderRadius: 16,
         padding: 16,
-        marginBottom: 12,
-        shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 2
-        },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 3
+        elevation: 4,
     },
 
-    card_header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 12
+    cardHeader: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 12,
     },
 
-    cliente_name: {
+    avatar: {
+        width: 46,
+        height: 46,
+        borderRadius: 23,
+        backgroundColor: "#3498db",
+        alignItems: "center",
+        justifyContent: "center",
+    },
+
+    avatarText: {
+        color: "#fff",
+        fontSize: 20,
+        fontWeight: "bold",
+    },
+
+    alias: {
         fontSize: 18,
-        fontWeight: 'bold',
-        color: '#2c3e50',
-        flex: 1,
-        marginRight: 10
+        fontWeight: "bold",
+        color: "#2c3e50",
     },
 
-    actionButtons: {
-        flexDirection: 'row',
-        gap: 8
+    subText: {
+        fontSize: 13,
+        color: "#7f8c8d",
     },
 
-    editButton: {
-        backgroundColor: '#3498db',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 6
-    },
-
-    editButtonText: {
-        color: '#fff',
-        fontSize: 12,
-        fontWeight: '600'
-    },
-
-    deleteButton: {
-        backgroundColor: '#e74c3c',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 6
-    },
-
-    deleteButtonText: {
-        color: '#fff',
-        fontSize: 12,
-        fontWeight: '600'
-    },
-
-    cardContent: {
-        gap: 8
+    cardBody: {
+        marginTop: 16,
+        gap: 10,
     },
 
     infoRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center'
+        flexDirection: "row",
+        justifyContent: "space-between",
     },
 
     label: {
-        fontSize: 14,
-        color: '#7f8c8d',
-        fontWeight: '500'
+        color: "#95a5a6",
+        fontSize: 13,
     },
 
     value: {
-        fontSize: 14,
-        color: '#2c3e50',
-        fontWeight: '600'
+        color: "#2c3e50",
+        fontWeight: "600",
     },
 
-    emptyState: {
-        alignItems: 'center',
-        paddingVertical: 40
-    },
-
-    emptyStateText: {
-        fontSize: 16,
-        color: '#7f8c8d',
-        textAlign: 'center'
-    },
-
-    formContainer: {
-        backgroundColor: '#fff',
-        borderRadius: 12,
-        padding: 20,
-        marginBottom: 20,
-        shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 2
-        },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 3
-    },
-
-    formTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        textAlign: 'center',
-        marginBottom: 20,
-        color: '#2c3e50'
-    },
-
-    textInput: {
-        borderWidth: 1,
-        borderColor: '#ddd',
-        borderRadius: 8,
-        padding: 12,
-        marginBottom: 16,
-        fontSize: 16,
-        backgroundColor: '#f8f9fa',
-        color: '#2c3e50'
-    },
-
-    buttonContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        gap: 12,
-        marginTop: 8
-    },
-
-    primaryButton: {
-        backgroundColor: '#27ae60',
-        paddingVertical: 12,
-        paddingHorizontal: 24,
-        borderRadius: 8,
-        flex: 1,
-        alignItems: 'center'
-    },
-
-    primaryButtonText: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: '600'
-    },
-
-    secondaryButton: {
-        backgroundColor: '#95a5a6',
-        paddingVertical: 12,
-        paddingHorizontal: 24,
-        borderRadius: 8,
-        flex: 1,
-        alignItems: 'center'
-    },
-
-    secondaryButtonText: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: '600'
-    },
-
-    topRightButton: {
-        backgroundColor: '#2980b9',
-        paddingVertical: 8,
-        paddingHorizontal: 16,
+    editBtn: {
+        marginTop: 12,
+        backgroundColor: "#2980b9",
+        flexDirection: "row",
+        justifyContent: "center",
+        gap: 8,
+        padding: 10,
         borderRadius: 8,
     },
-    topRightButtonText: {
-        color: '#fff',
-        fontWeight: 'bold',
-        fontSize: 14,
+
+    editText: {
+        color: "#fff",
+        fontWeight: "600",
+    },
+
+    empty: {
+        alignItems: "center",
+        marginTop: 80,
+    },
+
+    emptyText: {
+        marginTop: 10,
+        fontSize: 16,
+        color: "#7f8c8d",
+    },
+
+    fab: {
+        position: "absolute",
+        right: 20,
+        bottom: 30,
+        backgroundColor: "#27ae60",
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        alignItems: "center",
+        justifyContent: "center",
+        elevation: 6,
     },
 });
 

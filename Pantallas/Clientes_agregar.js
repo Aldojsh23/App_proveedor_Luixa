@@ -1,19 +1,26 @@
-//Esta hoja nos ayuda a crear los usuarios
-
 import React, { useState, useEffect } from "react";
 import {
-    SafeAreaView, ScrollView, View, Text, TextInput,
-    FlatList, Button, TouchableOpacity, StyleSheet,
-    KeyboardAvoidingView, Platform, Alert, Dimensions
-} from 'react-native';
-import { Picker } from '@react-native-picker/picker';
+    SafeAreaView,
+    ScrollView,
+    View,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    StyleSheet,
+    KeyboardAvoidingView,
+    Platform,
+    Alert,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 
 import { supabase } from "../lib/supabase";
 import { getSession } from "../lib/session";
 
-const Clientes_agregar = ({ route }) => {
+const Clientes_agregar = ({ route, navigation }) => {
+    const insets = useSafeAreaInsets();
+
     const [proveedorId, setProveedorId] = useState(null);
-    const [clientes, setClientes] = useState([]);
     const [form, setForm] = useState({
         id_cliente: null,
         nombre_cliente: '',
@@ -24,23 +31,30 @@ const Clientes_agregar = ({ route }) => {
         estado: '',
     });
 
-    // Cargar sesión al montar el componente
     useEffect(() => {
         const loadSession = async () => {
             const session = await getSession();
-            console.log("Sesión recuperada:", session);
-
-            if (session?.id) {
-                setProveedorId(session.id);
-            } else if (route.params?.id_proveedor) {
-                setProveedorId(route.params.id_proveedor);
-            } else {
-                console.error("No se encontró ID de proveedor");
-                Alert.alert("Error", "No se pudo identificar al proveedor");
-            }
+            if (session?.id) setProveedorId(session.id);
+            else if (route.params?.id_proveedor) setProveedorId(route.params.id_proveedor);
+            else Alert.alert("Error", "No se pudo identificar al proveedor");
         };
         loadSession();
     }, []);
+
+    useEffect(() => {
+        if (route.params?.cliente) {
+            const c = route.params.cliente;
+            setForm({
+                id_cliente: c.id_cliente,
+                nombre_cliente: c.nombre_cliente,
+                apellidos_cliente: c.apellidos_cliente,
+                alias_cliente: c.alias_cliente,
+                telefono_cliente: c.telefono_cliente.toString(),
+                municipio: c.municipio,
+                estado: c.estado,
+            });
+        }
+    }, [route.params?.cliente]);
 
     const limpiarFormulario = () => {
         setForm({
@@ -55,37 +69,13 @@ const Clientes_agregar = ({ route }) => {
     };
 
     const validarFormulario = () => {
-        if (!form.nombre_cliente.trim()) {
-            Alert.alert("Error", "El nombre del cliente es obligatorio");
-            return (false);
-        }
-
-        if (!form.apellidos_cliente.trim()) {
-            Alert.alert("Error", "Los apellidos del cliente son obligatorios");
-            return (false);
-        }
-
-        if (!form.alias_cliente.trim()) {
-            Alert.alert("Error", "El alias del cliente es obligatorio");
-            return (false);
-        }
-
-        if (!form.telefono_cliente || isNaN(form.telefono_cliente) || parseInt(form.telefono_cliente) < 0) {
-            Alert.alert("Error", "El teléfono del cliente es obligatorio");
-            return (false);
-        }
-
-        if (!form.municipio.trim()) {
-            Alert.alert("Error", "El municipio del cliente es obligatorio");
-            return (false);
-        }
-
-        if (!form.estado.trim()) {
-            Alert.alert("Error", "El estado del cliente es obligatorio");
-            return (false);
-        }
-
-        return (true);
+        if (!form.nombre_cliente.trim()) return Alert.alert("Error", "Nombre obligatorio");
+        if (!form.apellidos_cliente.trim()) return Alert.alert("Error", "Apellidos obligatorios");
+        if (!form.alias_cliente.trim()) return Alert.alert("Error", "Alias obligatorio");
+        if (!form.telefono_cliente) return Alert.alert("Error", "Teléfono obligatorio");
+        if (!form.municipio.trim()) return Alert.alert("Error", "Municipio obligatorio");
+        if (!form.estado.trim()) return Alert.alert("Error", "Estado obligatorio");
+        return true;
     };
 
     const agregar_o_actualizar_cliente = async () => {
@@ -125,218 +115,174 @@ const Clientes_agregar = ({ route }) => {
         }
     };
 
-    useEffect(() => {
-    if (route.params?.cliente) {
-        const cliente = route.params.cliente;
-        setForm({
-            id_cliente: cliente.id_cliente,
-            nombre_cliente: cliente.nombre_cliente,
-            apellidos_cliente: cliente.apellidos_cliente,
-            alias_cliente: cliente.alias_cliente,
-            telefono_cliente: cliente.telefono_cliente.toString(),
-            municipio: cliente.municipio,
-            estado: cliente.estado,
-        });
-    }
-}, [route.params?.cliente]);
-
-    console.log("\n\n");
-
     return (
-        <KeyboardAvoidingView
-            style={styles.container}
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-        >
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
             <SafeAreaView style={styles.container}>
-                <ScrollView
-                    style={styles.scrollView}
-                    showsVerticalScrollIndicator={false}
-                    keyboardShouldPersistTaps="handled"
-                >
-                    <View style={styles.formContainer}>
-                        <Text style={styles.formTitle}>
-                            {form.id_cliente ? "Editar Cliente" : "Agregar Cliente"}
-                        </Text>
+                <ScrollView contentContainerStyle={styles.scroll}>
+                    <View style={styles.card}>
 
-                        <TextInput
-                            style={styles.textInput}
-                            placeholder="Nombre del Cliente *"
-                            value={form.nombre_cliente}
-                            onChangeText={text => setForm({ ...form, nombre_cliente: text })}
-                            placeholderTextColor="#999"
-                        />
+                        {/* Nombre */}
+                        <View style={styles.inputContainer}>
+                            <Ionicons name="person-outline" size={20} color="#7f8c8d" style={styles.inputIcon} />
+                            <TextInput
+                                style={styles.inputWithIcon}
+                                placeholder="Nombre *"
+                                value={form.nombre_cliente}
+                                onChangeText={t => setForm({ ...form, nombre_cliente: t })}
+                                placeholderTextColor="#aaa"
+                            />
+                        </View>
 
-                        <TextInput
-                            style={styles.textInput}
-                            placeholder="Apellidos del Cliente *"
-                            value={form.apellidos_cliente}
-                            onChangeText={text => setForm({ ...form, apellidos_cliente: text })}
-                            placeholderTextColor="#999"
-                        />
+                        {/* Apellidos */}
+                        <View style={styles.inputContainer}>
+                            <Ionicons name="people-outline" size={20} color="#7f8c8d" style={styles.inputIcon} />
+                            <TextInput
+                                style={styles.inputWithIcon}
+                                placeholder="Apellidos *"
+                                value={form.apellidos_cliente}
+                                onChangeText={t => setForm({ ...form, apellidos_cliente: t })}
+                                placeholderTextColor="#aaa"
+                            />
+                        </View>
 
-                        <TextInput
-                            style={styles.textInput}
-                            placeholder="Alias del Cliente (Importante)"
-                            value={form.alias_cliente}
-                            onChangeText={text => setForm({ ...form, alias_cliente: text })}
-                            placeholderTextColor="#999"
-                        />
+                        {/* Alias */}
+                        <View style={styles.inputContainer}>
+                            <Ionicons name="pricetag-outline" size={20} color="#7f8c8d" style={styles.inputIcon} />
+                            <TextInput
+                                style={styles.inputWithIcon}
+                                placeholder="Alias *"
+                                value={form.alias_cliente}
+                                onChangeText={t => setForm({ ...form, alias_cliente: t })}
+                                placeholderTextColor="#aaa"
+                            />
+                        </View>
 
-                        <TextInput
-                            style={styles.textInput}
-                            placeholder="Municipio *"
-                            value={form.municipio}
-                            onChangeText={text => setForm({ ...form, municipio: text })}
-                            placeholderTextColor="#999"
-                        />
+                        {/* Teléfono */}
+                        <View style={styles.inputContainer}>
+                            <Ionicons name="call-outline" size={20} color="#7f8c8d" style={styles.inputIcon} />
+                            <TextInput
+                                style={styles.inputWithIcon}
+                                placeholder="Teléfono *"
+                                keyboardType="number-pad"
+                                value={form.telefono_cliente}
+                                onChangeText={t => {
+                                    const clean = t.replace(/[^0-9]/g, "");
+                                    if (clean.length <= 10)
+                                        setForm({ ...form, telefono_cliente: clean });
+                                }}
+                                placeholderTextColor="#aaa"
+                            />
+                        </View>
 
-                        <TextInput
-                            style={styles.textInput}
-                            placeholder="Estado *"
-                            value={form.estado}
-                            onChangeText={text => setForm({ ...form, estado: text })}
-                            placeholderTextColor="#999"
-                        />
+                        {/* Municipio */}
+                        <View style={styles.inputContainer}>
+                            <Ionicons name="location-outline" size={20} color="#7f8c8d" style={styles.inputIcon} />
+                            <TextInput
+                                style={styles.inputWithIcon}
+                                placeholder="Municipio *"
+                                value={form.municipio}
+                                onChangeText={t => setForm({ ...form, municipio: t })}
+                                placeholderTextColor="#aaa"
+                            />
+                        </View>
 
-                        <TextInput
-                            style={styles.textInput}
-                            placeholder="Teléfono *"
-                            value={form.telefono_cliente}
-                            keyboardType="number-pad"
-                            onChangeText={text => {
-                                // Eliminar caracteres no numéricos
-                                const cleanedText = text.replace(/[^0-9]/g, '');
-                                // Limitar a 10 dígitos
-                                if (cleanedText.length <= 10) {
-                                    setForm({ ...form, telefono_cliente: cleanedText });
-                                }
-                            }}
-                            placeholderTextColor="#999"
-                        />
+                        {/* Estado */}
+                        <View style={styles.inputContainer}>
+                            <Ionicons name="map-outline" size={20} color="#7f8c8d" style={styles.inputIcon} />
+                            <TextInput
+                                style={styles.inputWithIcon}
+                                placeholder="Estado *"
+                                value={form.estado}
+                                onChangeText={t => setForm({ ...form, estado: t })}
+                                placeholderTextColor="#aaa"
+                            />
+                        </View>
 
-                        <View style={styles.buttonContainer}>
-                            <TouchableOpacity
-                                style={styles.primaryButton}
-                                onPress={agregar_o_actualizar_cliente}
-                            >
-                                <Text style={styles.primaryButtonText}>
-                                    {form.id_cliente ? "Actualizar" : "Agregar"}
+                        <View style={styles.buttons}>
+                            <TouchableOpacity style={styles.primary} onPress={agregar_o_actualizar_cliente}>
+                                <Text style={styles.primaryText}>
+                                    {form.id_cliente ? "Actualizar" : "Guardar"}
                                 </Text>
-
                             </TouchableOpacity>
 
-                            <TouchableOpacity
-                                style={styles.secondaryButton}
-                                onPress={limpiarFormulario}
-                            >
-                                <Text style={styles.secondaryButtonText}>
-                                    Limpiar
-                                </Text>
+                            <TouchableOpacity style={styles.secondary} onPress={limpiarFormulario}>
+                                <Text style={styles.secondaryText}>Limpiar</Text>
                             </TouchableOpacity>
                         </View>
+
                     </View>
-
                 </ScrollView>
-
             </SafeAreaView>
         </KeyboardAvoidingView>
-
     );
-
-}
+};
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#f8f9fa'
-    },
+    container: { flex: 1, backgroundColor: "#f4f6f8" },
 
-    scrollView: {
-        flex: 1,
-        paddingHorizontal: 16
-    },
+    scroll: { padding: 16 },
 
-    formContainer: {
-        backgroundColor: '#fff',
-        borderRadius: 12,
+    card: {
+        backgroundColor: "#fff",
+        borderRadius: 16,
         padding: 20,
-        marginTop: 20,
-        shadowColor: '#000',
-        shadowOffset: {
-            width: 10,
-            height: 2
-        },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 3
+        elevation: 4,
     },
 
-    formTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        textAlign: 'center',
-        marginBottom: 20,
-        color: '#2c3e50'
-    },
-
-    textInput: {
+    inputContainer: {
+        flexDirection: "row",
+        alignItems: "center",
+        backgroundColor: "#f8f9fa",
+        borderRadius: 8,
         borderWidth: 1,
-        borderColor: '#ddd',
-        borderRadius: 8,
-        padding: 12,
-        marginBottom: 16,
-        fontSize: 16,
-        backgroundColor: '#f8f9fa',
-        color: '#2c3e50'
+        borderColor: "#ddd",
+        paddingHorizontal: 12,
+        marginBottom: 14,
     },
 
-    buttonContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
+    inputIcon: {
+        marginRight: 8,
+    },
+
+    inputWithIcon: {
+        flex: 1,
+        fontSize: 16,
+        color: "#2c3e50",
+        paddingVertical: 12,
+    },
+
+    buttons: {
+        flexDirection: "row",
         gap: 12,
-        marginTop: 8
+        marginTop: 10,
     },
 
-    primaryButton: {
-        backgroundColor: '#27ae60',
-        paddingVertical: 12,
-        paddingHorizontal: 24,
-        borderRadius: 8,
+    primary: {
         flex: 1,
-        alignItems: 'center'
-    },
-
-    primaryButtonText: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: '600'
-    },
-
-    secondaryButton: {
-        backgroundColor: '#95a5a6',
-        paddingVertical: 12,
-        paddingHorizontal: 24,
+        backgroundColor: "#27ae60",
+        padding: 14,
         borderRadius: 8,
+        alignItems: "center",
+    },
+
+    primaryText: {
+        color: "#fff",
+        fontWeight: "600",
+        fontSize: 16,
+    },
+
+    secondary: {
         flex: 1,
-        alignItems: 'center'
-    },
-
-    secondaryButtonText: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: '600'
-    },
-
-    topRightButton: {
-        backgroundColor: '#2980b9',
-        paddingVertical: 8,
-        paddingHorizontal: 16,
+        backgroundColor: "#95a5a6",
+        padding: 14,
         borderRadius: 8,
+        alignItems: "center",
     },
-    topRightButtonText: {
-        color: '#fff',
-        fontWeight: 'bold',
-        fontSize: 14,
+
+    secondaryText: {
+        color: "#fff",
+        fontWeight: "600",
+        fontSize: 16,
     },
 });
 

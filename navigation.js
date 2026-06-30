@@ -34,11 +34,20 @@ function ClientesNavigator({ userData }) {
             <ClientesStack.Screen
                 name="Clientes_agregar"
                 component={Clientes_agregar}
-                styles={styles.headerTitle}
-                options={{
-                    headerTitle: "Agregar clientes",
-                    headerBackTitleVisible: false
-                }}
+                options={({ route }) => ({
+                    headerTitle: route.params?.cliente ? "Editar Cliente" : "Agregar Cliente",
+                    headerBackTitleVisible: false,
+                    headerTintColor: "#fff",
+                    headerStyle: {
+                        backgroundColor: "#2980b9",
+                    },
+                    headerTitleAlign: "center",
+                    headerTitleStyle: {
+                        color: "#fff",
+                        fontSize: 22,
+                        fontWeight: "bold",
+                    },
+                })}
             />
         </ClientesStack.Navigator>
     );
@@ -56,11 +65,22 @@ function InventarioNavigator({ userData }) {
             <InventarioStack.Screen
                 name="Product_add"
                 component={Product_add}
-                styles={styles.headerTitle}
-                options={{
-                    headerTitle: "Agregar productos",
-                    headerBackTitleVisible: false
-                }}
+                options={({ route }) => ({
+                    headerTitle: route.params?.producto
+                        ? "Editar Producto"
+                        : "Agregar Producto",
+                    headerBackTitleVisible: false,
+                    headerTintColor: "#fff",
+                    headerStyle: {
+                        backgroundColor: "#2980b9",
+                    },
+                    headerTitleAlign: "center",
+                    headerTitleStyle: {
+                        color: "#fff",
+                        fontSize: 22,
+                        fontWeight: "bold",
+                    },
+                })}
             />
 
         </InventarioStack.Navigator>
